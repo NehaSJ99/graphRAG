@@ -1,8 +1,17 @@
 -- =========================================================
--- CREATE DATABASE
+-- DROP TABLES IF THEY EXIST (in dependency order)
 -- =========================================================
-
-USE sales_intelligence.default;
+DROP TABLE IF EXISTS campaign_responses;
+DROP TABLE IF EXISTS campaigns;
+DROP TABLE IF EXISTS returns;
+DROP TABLE IF EXISTS shipments;
+DROP TABLE IF EXISTS order_lines;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS product_taxonomy;
+DROP TABLE IF EXISTS regions;
+DROP TABLE IF EXISTS competitors;
 
 -- =========================================================
 -- 1. MASTER / CATEGORICAL TABLES
@@ -10,10 +19,11 @@ USE sales_intelligence.default;
 
 -- 1.1 Regions Table
 CREATE TABLE IF NOT EXISTS regions (
-    region_id STRING,
+    region_id STRING NOT NULL,
     region_name STRING,
     country STRING,
-    geo_cluster STRING
+    geo_cluster STRING,
+    CONSTRAINT pk_regions PRIMARY KEY (region_id)
 ) USING DELTA;
 
 INSERT INTO regions VALUES
@@ -30,10 +40,11 @@ INSERT INTO regions VALUES
 
 -- 1.2 Product Taxonomy Table
 CREATE TABLE IF NOT EXISTS product_taxonomy (
-    category_id STRING,
+    category_id STRING NOT NULL,
     category_name STRING,
     parent_category_id STRING,
-    tags ARRAY<STRING>
+    tags ARRAY<STRING>,
+    CONSTRAINT pk_product_taxonomy PRIMARY KEY (category_id)
 ) USING DELTA;
 
 INSERT INTO product_taxonomy VALUES
@@ -50,12 +61,14 @@ INSERT INTO product_taxonomy VALUES
 
 -- 1.3 Products Table
 CREATE TABLE IF NOT EXISTS products (
-    product_id STRING,
+    product_id STRING NOT NULL,
     product_name STRING,
-    category_id STRING,
+    category_id STRING NOT NULL,
     launch_date DATE,
     price DECIMAL(10,2),
-    status STRING
+    status STRING,
+    CONSTRAINT pk_products PRIMARY KEY (product_id),
+    CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES product_taxonomy(category_id)
 ) USING DELTA;
 
 INSERT INTO products VALUES
@@ -72,13 +85,15 @@ INSERT INTO products VALUES
 
 -- 1.4 Customers Table
 CREATE TABLE IF NOT EXISTS customers (
-    customer_id STRING,
+    customer_id STRING NOT NULL,
     customer_name STRING,
     segment STRING,
     email STRING,
     phone STRING,
-    region_id STRING,
-    partner_id STRING
+    region_id STRING NOT NULL,
+    partner_id STRING,
+    CONSTRAINT pk_customers PRIMARY KEY (customer_id),
+    CONSTRAINT fk_customers_region FOREIGN KEY (region_id) REFERENCES regions(region_id)
 ) USING DELTA;
 
 INSERT INTO customers VALUES
@@ -95,10 +110,11 @@ INSERT INTO customers VALUES
 
 -- 1.5 Competitors Table
 CREATE TABLE IF NOT EXISTS competitors (
-    competitor_id STRING,
+    competitor_id STRING NOT NULL,
     competitor_name STRING,
     hq_region STRING,
-    website STRING
+    website STRING,
+    CONSTRAINT pk_competitors PRIMARY KEY (competitor_id)
 ) USING DELTA;
 
 INSERT INTO competitors VALUES
@@ -114,11 +130,14 @@ INSERT INTO competitors VALUES
 
 -- 2.1 Orders Table
 CREATE TABLE IF NOT EXISTS orders (
-    order_id STRING,
-    customer_id STRING,
+    order_id STRING NOT NULL,
+    customer_id STRING NOT NULL,
     order_date DATE,
-    region_id STRING,
-    total_amount DECIMAL(12,2)
+    region_id STRING NOT NULL,
+    total_amount DECIMAL(12,2),
+    CONSTRAINT pk_orders PRIMARY KEY (order_id),
+    CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    CONSTRAINT fk_orders_region FOREIGN KEY (region_id) REFERENCES regions(region_id)
 ) USING DELTA;
 
 INSERT INTO orders
@@ -132,13 +151,16 @@ FROM range(1, 121) AS t(id);
 
 -- 2.2 Order Lines Table
 CREATE TABLE IF NOT EXISTS order_lines (
-    order_line_id STRING,
-    order_id STRING,
-    product_id STRING,
+    order_line_id STRING NOT NULL,
+    order_id STRING NOT NULL,
+    product_id STRING NOT NULL,
     quantity INT,
     unit_price DECIMAL(10,2),
     discount DECIMAL(5,2),
-    net_amount DECIMAL(10,2)
+    net_amount DECIMAL(10,2),
+    CONSTRAINT pk_order_lines PRIMARY KEY (order_line_id),
+    CONSTRAINT fk_order_lines_order FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    CONSTRAINT fk_order_lines_product FOREIGN KEY (product_id) REFERENCES products(product_id)
 ) USING DELTA;
 
 INSERT INTO order_lines
@@ -154,12 +176,13 @@ FROM range(1, 350) AS t(id);
 
 -- 2.3 Shipments Table
 CREATE TABLE IF NOT EXISTS shipments (
-    shipment_id STRING,
-    order_id STRING,
+    shipment_id STRING NOT NULL,
+    order_id STRING NOT NULL,
     ship_date DATE,
     delivery_date DATE,
     status STRING,
-    carrier STRING
+    carrier STRING,
+    CONSTRAINT pk_shipments PRIMARY KEY (shipment_id)
 ) USING DELTA;
 
 INSERT INTO shipments
@@ -174,11 +197,13 @@ FROM range(1, 250) AS t(id);
 
 -- 2.4 Returns Table
 CREATE TABLE IF NOT EXISTS returns (
-    return_id STRING,
-    order_line_id STRING,
+    return_id STRING NOT NULL,
+    order_line_id STRING NOT NULL,
     return_date DATE,
     reason STRING,
-    refund_amount DECIMAL(10,2)
+    refund_amount DECIMAL(10,2),
+    CONSTRAINT pk_returns PRIMARY KEY (return_id),
+    CONSTRAINT fk_returns_order_line FOREIGN KEY (order_line_id) REFERENCES order_lines(order_line_id)
 ) USING DELTA;
 
 INSERT INTO returns
@@ -196,11 +221,12 @@ FROM range(1, 100) AS t(id);
 
 -- 2.5 Campaigns Table
 CREATE TABLE IF NOT EXISTS campaigns (
-    campaign_id STRING,
+    campaign_id STRING NOT NULL,
     campaign_name STRING,
     start_date DATE,
     end_date DATE,
-    target_segment STRING
+    target_segment STRING,
+    CONSTRAINT pk_campaigns PRIMARY KEY (campaign_id)
 ) USING DELTA;
 
 INSERT INTO campaigns VALUES
@@ -212,11 +238,14 @@ INSERT INTO campaigns VALUES
 
 -- 2.6 Campaign Responses Table
 CREATE TABLE IF NOT EXISTS campaign_responses (
-    response_id STRING,
-    campaign_id STRING,
-    customer_id STRING,
+    response_id STRING NOT NULL,
+    campaign_id STRING NOT NULL,
+    customer_id STRING NOT NULL,
     response_date DATE,
-    response_type STRING
+    response_type STRING,
+    CONSTRAINT pk_campaign_responses PRIMARY KEY (response_id),
+    CONSTRAINT fk_campaign_responses_campaign FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id),
+    CONSTRAINT fk_campaign_responses_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 ) USING DELTA;
 
 INSERT INTO campaign_responses
