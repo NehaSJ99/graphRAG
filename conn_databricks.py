@@ -1,10 +1,8 @@
 import os
 from typing import Optional, Dict, Any, List
-
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from dotenv import load_dotenv
-
 from langchain_community.utilities import SQLDatabase  
 from langchain.sql_database import SQLDatabase  
 
@@ -17,6 +15,8 @@ DATABRICKS_HTTP_PATH = os.getenv('DATABRICKS_HTTP_PATH')
 DATABRICKS_ACCESS_TOKEN = os.getenv('DATABRICKS_ACCESS_TOKEN')
 CATALOG_NAME = os.getenv('CATALOG_NAME')
 SCHEMA_NAME = os.getenv('SCHEMA_NAME')
+
+
 # Correct connection string for SQLAlchemy
 connection_string = (
     f"databricks://token:{DATABRICKS_ACCESS_TOKEN}@{DATABRICKS_SERVER_HOST}:443"
@@ -74,11 +74,11 @@ def get_sqldb(include_tables: Optional[List[str]] = None) -> SQLDatabase:
         return SQLDatabase(engine=eng)  # type: ignore[call-arg]
 
 
-def list_tables() -> None:
-    rows = execute_sql("SHOW TABLES")
-    for row in rows:
-        print(row)
+# def list_tables() -> None:
+#     rows = execute_sql("SHOW TABLES")
+#     for row in rows:
+#         print(row)
 
 
-if __name__ == "__main__":
-    list_tables()
+# if __name__ == "__main__":
+#     list_tables()
